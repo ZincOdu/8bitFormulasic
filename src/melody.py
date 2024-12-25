@@ -119,7 +119,7 @@ class Melody8bit:
         else:
             return self.gen_instrument_technique_wave(technique, pitch, score_sample_count)
 
-    def gen_wave(self, score_list):
+    def gen_wave(self, score_list, repeat_times=1):
         """
         score_list example: [('C4', '1/4', ''),
                              ('D4', '1/4', ''),
@@ -130,7 +130,8 @@ class Melody8bit:
             if not isinstance(score, tuple) or len(score) != 3:
                 raise ValueError(f"score_list example: [('C4', '1/4', ''),...]")
             wave_list.append(self.gen_one_score_wave(score))
-        return np.concatenate(wave_list)
+        wav = np.concatenate(wave_list)
+        return np.tile(wav, repeat_times)
 
     def write_wave(self, wav, file_path):
         with wave.open(file_path, 'wb') as f:
@@ -226,8 +227,11 @@ class GuitarMelody8bit(Melody8bit):
             return root_frequency, third_frequency, fifth_frequency
 
     def gen_chord_wave(self, root_frequency, third_frequency, fifth_frequency, one_score_sample_count):
-        pass
-        # TODO: 实现和弦音色波形
+        wav1 = self.gen_prolong_wave(root_frequency, one_score_sample_count)
+        wav2 = self.gen_prolong_wave(third_frequency, one_score_sample_count)
+        wav3 = self.gen_prolong_wave(fifth_frequency, one_score_sample_count)
+        wav = wav1 + wav2 + wav3
+        return wav
 
     def gen_arpeggio_wave(self, root_frequency, third_frequency, fifth_frequency, one_score_sample_count):
         pass
@@ -262,9 +266,9 @@ class GuitarMelody8bit(Melody8bit):
 
 
 # 贝司音色波形
-class BassMelody8bit(Melody8bit):
+class BassMelody8bit(GuitarMelody8bit):
     def __init__(self, bpm):
-        super().__init__(bpm, 32)
+        super().__init__(bpm)
         self.timbre_function = gen_triangle_wave
 
 
