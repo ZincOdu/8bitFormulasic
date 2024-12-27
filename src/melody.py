@@ -379,6 +379,9 @@ class MelodyAssist8bit(Melody8bit):
         self.tonic_chords = ['1-maj', '6-min']
         self.dominant_chords = ['5-maj', '3-min', '7-dim']
         self.subdominant_chords = ['2-min', '4-maj']
+        self.chord_func_dict = {'T': self.tonic_chords, 'D': self.dominant_chords, 'S': self.subdominant_chords}
+
+        self.popular_chord_progression_types = ['T-S-D-T', 'S-D-D-T-S-D-T-T', 'T-D-T-D-S-T-S-T']
 
     # 根据给定调性生成自然音音名
     def get_natural_pitches(self, tonality):
@@ -411,3 +414,9 @@ class MelodyAssist8bit(Melody8bit):
             pitch_scale += scale
             pitch_list.append(self.scale_pitch[pitch_scale % 12])
         return pitch_list
+
+    # 根据给定调性和和弦类型生成和弦进行
+    def gen_chord_progression(self, tonality, chord_progression_type):
+        chords = chord_progression_type.split('-')
+        for chord in chords:
+            pass
