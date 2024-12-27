@@ -362,9 +362,10 @@ class DrumMelody8bit(Beat8bit):
     def __init__(self, bpm):
         super().__init__(bpm)
         self.amplitude = 16
-        self.instrument_duration = 0.05  # seconds
+        self.instrument_duration = 0.1  # seconds
         self.pitch_dict = {'X': 0.0, 'O': 0.0}
-        self.performances = {'triple': 'triple beat 三连音'}
+        self.performances = {'triple': 'triple beat 三连音',
+                             'hi-hat': 'hi-hat 镲音',}
 
     def gen_timbre_wave(self, pitch, duration):
         if pitch == 'X':
@@ -378,9 +379,26 @@ class DrumMelody8bit(Beat8bit):
         wav = np.concatenate([wav1, wav2])
         return np.tile(wav, 3)
 
+    def gen_hi_hat_wave(self, pitch, one_score_sample_count):
+        instrument_duration = 0.02
+        return self.gen_timbre_wave(pitch, instrument_duration)
+
     def gen_instrument_technique_wave(self, pitch, one_score_sample_count, technique):
         if technique not in self.performances.keys():
             raise ValueError(f'Unknown technique: {technique}, should be one of {self.performances.keys()}')
 
         if technique == 'triple':
             return self.gen_triple_wave(pitch, one_score_sample_count)
+        elif technique == 'hi-hat':
+            return self.gen_hi_hat_wave(pitch, one_score_sample_count)
+
+
+class Band8bit:
+    def __init__(self, bpm, one_beat_note='quarter'):
+        self.bpm = bpm
+        self.one_beat_note = one_beat_note
+
+        self.guitar1 = GuitarMelody8bit(bpm)
+        self.guitar2 = GuitarMelody8bit(bpm)
+        self.bass = BassMelody8bit(bpm)
+        self.drum = DrumMelody8bit(bpm)
