@@ -1,4 +1,5 @@
 import numpy as np
+np.random.seed(42)
 
 
 def gen_square_wave(frequency, amplitude, duration, sample_rate):
@@ -31,3 +32,21 @@ def gen_zero_wave(num_samples):
     """
     zero_wave = np.zeros(num_samples, dtype=np.uint8)
     return zero_wave
+
+
+def gen_noise_wave(amplitude, duration, sample_rate):
+    """
+    return an uint8 array of noise wave
+    """
+    num_samples = int(duration * sample_rate)
+    noise_wave = np.random.randint(0, amplitude, num_samples, dtype=np.uint8)
+    return noise_wave
+
+
+def regularize_wave(wav, num_samples):
+    if len(wav) < num_samples:
+        zero_sample_count = num_samples - len(wav)
+        wav = np.concatenate([wav, gen_zero_wave(zero_sample_count)])
+    elif len(wav) > num_samples:
+        wav = wav[:num_samples]
+    return wav
