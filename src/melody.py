@@ -5,7 +5,7 @@ from src.utils import gen_square_wave, gen_triangle_wave, gen_zero_wave, gen_noi
 
 
 # 节拍类
-class Beat8bit(ABC):
+class Rhythm8bit(ABC):
     def __init__(self, bpm, one_beat_note='quarter'):
         self.bpm = bpm  # beats per minute 60-240 节拍数
         self.one_beat_note = one_beat_note  # 'half', 'quarter', 'eighth' 以几分音符为一拍
@@ -139,9 +139,8 @@ class Beat8bit(ABC):
 
 
 # 旋律类
-class Melody8bit(Beat8bit, ABC):
-    def __init__(self, bpm):
-        super().__init__(bpm)
+class Melody8bit:
+    def __init__(self):
 
         self.pitch_dict = {'C1': 32.70, 'D1': 36.71, 'E1': 41.20, 'F1': 43.65, 'G1': 48.99, 'A1': 55.00,
                            'B1': 61.74, 'C2': 65.41, 'D2': 73.42, 'E2': 82.41, 'F2': 87.31, 'G2': 97.99,
@@ -241,7 +240,7 @@ class Melody8bit(Beat8bit, ABC):
 
 
 # 吉他
-class GuitarMelody8bit(Melody8bit):
+class Guitar8bit(Rhythm8bit):
     def __init__(self, bpm):
         super().__init__(bpm)
         self.instrument_duration = 0.1  # seconds
@@ -259,6 +258,8 @@ class GuitarMelody8bit(Melody8bit):
                              'aug-chord': 'augmented triad 增三和弦',
                              'aug-arpeggio': 'augmented triad arpeggio 增三和弦琶音',
                              }
+        self.melody = Melody8bit()
+        self.pitch_dict = self.melody.pitch_dict
 
     def gen_timbre_wave(self, pitch, duration):
         frequency = self.pitch_dict[pitch]
@@ -287,23 +288,23 @@ class GuitarMelody8bit(Melody8bit):
     def get_chord_pitch(self, pitch, chord_type):
         if chord_type == 'maj':
             # 根音、三音（大三度）、五音（小三度）
-            third_pitch = self.cal_pitch(pitch, '+maj3')
-            fifth_pitch = self.cal_pitch(third_pitch, '+min3')
+            third_pitch = self.melody.cal_pitch(pitch, '+maj3')
+            fifth_pitch = self.melody.cal_pitch(third_pitch, '+min3')
             return pitch, third_pitch, fifth_pitch
         elif chord_type == 'min':
             # 根音、三音（小三度）、五音（大三度）
-            third_pitch = self.cal_pitch(pitch, '+min3')
-            fifth_pitch = self.cal_pitch(third_pitch, '+maj3')
+            third_pitch = self.melody.cal_pitch(pitch, '+min3')
+            fifth_pitch = self.melody.cal_pitch(third_pitch, '+maj3')
             return pitch, third_pitch, fifth_pitch
         elif chord_type == 'dim':
             # 根音、三音（小三度）、五音（小三度）
-            third_pitch = self.cal_pitch(pitch, '+min3')
-            fifth_pitch = self.cal_pitch(third_pitch, '+min3')
+            third_pitch = self.melody.cal_pitch(pitch, '+min3')
+            fifth_pitch = self.melody.cal_pitch(third_pitch, '+min3')
             return pitch, third_pitch, fifth_pitch
         elif chord_type == 'aug':
             # 根音、三音（大三度）、五音（大三度）
-            third_pitch = self.cal_pitch(pitch, '+maj3')
-            fifth_pitch = self.cal_pitch(third_pitch, '+maj3')
+            third_pitch = self.melody.cal_pitch(pitch, '+maj3')
+            fifth_pitch = self.melody.cal_pitch(third_pitch, '+maj3')
             return pitch, third_pitch, fifth_pitch
 
     def gen_chord_wave(self, root_pitch, third_pitch, fifth_pitch, one_score_sample_count):
@@ -317,7 +318,7 @@ class GuitarMelody8bit(Melody8bit):
         blank_duration = 0.01
         blank_sample_count = int(round(blank_duration * self.sample_rate))
         instrument_duration = 0.1
-        root_pitch_high = self.cal_pitch(root_pitch, '+semi12')
+        root_pitch_high = self.melody.cal_pitch(root_pitch, '+semi12')
         wav_root = self.gen_timbre_wave(root_pitch, instrument_duration)
         wav_third = self.gen_timbre_wave(third_pitch, instrument_duration)
         wav_fifth = self.gen_timbre_wave(fifth_pitch, instrument_duration)
@@ -347,7 +348,7 @@ class GuitarMelody8bit(Melody8bit):
 
 
 # 贝司音色波形
-class BassMelody8bit(GuitarMelody8bit):
+class Bass8bit(Guitar8bit):
     def __init__(self, bpm):
         super().__init__(bpm)
         self.amplitude = 32
@@ -358,14 +359,14 @@ class BassMelody8bit(GuitarMelody8bit):
 
 
 # 架子鼓音色波形
-class DrumMelody8bit(Beat8bit):
+class Drum8bit(Rhythm8bit):
     def __init__(self, bpm):
         super().__init__(bpm)
         self.amplitude = 16
         self.instrument_duration = 0.1  # seconds
         self.pitch_dict = {'X': 0.0, 'O': 0.0}
         self.performances = {'triple': 'triple beat 三连音',
-                             'hi-hat': 'hi-hat 镲音',}
+                             'hi-hat': 'hi-hat 镲音'}
 
     def gen_timbre_wave(self, pitch, duration):
         if pitch == 'X':
@@ -398,7 +399,8 @@ class Band8bit:
         self.bpm = bpm
         self.one_beat_note = one_beat_note
 
-        self.guitar1 = GuitarMelody8bit(bpm)
-        self.guitar2 = GuitarMelody8bit(bpm)
-        self.bass = BassMelody8bit(bpm)
-        self.drum = DrumMelody8bit(bpm)
+        self.guitar1 = Guitar8bit(bpm)
+        self.guitar2 = Guitar8bit(bpm)
+        self.bass = Bass8bit(bpm)
+        self.drum = Drum8bit(bpm)
+
