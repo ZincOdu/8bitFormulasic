@@ -141,7 +141,7 @@ class Rhythm8bit(ABC):
 # 旋律类
 class Melody8bit:
     def __init__(self):
-
+        # 十二平均律
         self.pitch_dict = {'C1': 32.70, 'D1': 36.71, 'E1': 41.20, 'F1': 43.65, 'G1': 48.99, 'A1': 55.00,
                            'B1': 61.74, 'C2': 65.41, 'D2': 73.42, 'E2': 82.41, 'F2': 87.31, 'G2': 97.99,
                            'A2': 110.00, 'B2': 123.47, 'C3': 130.81, 'D3': 146.83, 'E3': 164.81, 'F3': 174.61,
@@ -164,38 +164,6 @@ class Melody8bit:
                             '#F': 6, 'G': 7, '#G': 8, 'A': 9, '#A': 10, 'B': 11}
         self.scale_pitch = {0: 'C', 1: '#C', 2: 'D', 3: '#D', 4: 'E', 5: 'F',
                             6: '#F', 7: 'G', 8: '#G', 9: 'A', 10: '#A', 11: 'B'}
-
-    # 根据给定调性生成自然音音名
-    def get_natural_pitches(self, tonality):
-        """
-        mode example:
-         'C-maj': C major C大调
-         'A-min': a minor a小调
-         '#F-maj': #F major #F大调
-        """
-        pitch_list = []
-
-        tonality = tonality.split('-')
-        if len(tonality) != 2:
-            raise ValueError("mode example: 'C-maj', 'A-min', '#F-maj'")
-        base_pitch = tonality[0]
-        mode = tonality[1]
-        if base_pitch not in self.pitch_scale.keys():
-            raise ValueError("mode example: 'C-maj', 'A-min', '#F-maj'")
-        if mode not in ['maj', 'min']:
-            raise ValueError("mode example: 'C-maj', 'A-min', '#F-maj'")
-        scales = []
-        if mode == 'maj':
-            # 大调 全全半全全全半
-            scales = [0, 2, 2, 1, 2, 2, 2, 1]
-        elif mode == 'min':
-            # 小调 全半全全半全全
-            scales = [0, 2, 1, 2, 2, 1, 2, 2]
-        pitch_scale = self.pitch_scale[base_pitch]
-        for scale in scales:
-            pitch_scale += scale
-            pitch_list.append(self.scale_pitch[pitch_scale % 12])
-        return pitch_list
 
     # 音名计算
     def cal_pitch(self, in_pitch, method):
@@ -404,3 +372,42 @@ class Band8bit:
         self.bass = Bass8bit(bpm)
         self.drum = Drum8bit(bpm)
 
+
+class MelodyAssist8bit(Melody8bit):
+    def __init__(self):
+        super().__init__()
+        self.tonic_chords = ['1-maj', '6-min']
+        self.dominant_chords = ['5-maj', '3-min', '7-dim']
+        self.subdominant_chords = ['2-min', '4-maj']
+
+    # 根据给定调性生成自然音音名
+    def get_natural_pitches(self, tonality):
+        """
+        mode example:
+         'C-maj': C major C大调
+         'A-min': a minor a小调
+         '#F-maj': #F major #F大调
+        """
+        pitch_list = []
+
+        tonality = tonality.split('-')
+        if len(tonality) != 2:
+            raise ValueError("mode example: 'C-maj', 'A-min', '#F-maj'")
+        base_pitch = tonality[0]
+        mode = tonality[1]
+        if base_pitch not in self.pitch_scale.keys():
+            raise ValueError("mode example: 'C-maj', 'A-min', '#F-maj'")
+        if mode not in ['maj', 'min']:
+            raise ValueError("mode example: 'C-maj', 'A-min', '#F-maj'")
+        scales = []
+        if mode == 'maj':
+            # 大调 全全半全全全半
+            scales = [0, 2, 2, 1, 2, 2, 2, 1]
+        elif mode == 'min':
+            # 小调 全半全全半全全
+            scales = [0, 2, 1, 2, 2, 1, 2, 2]
+        pitch_scale = self.pitch_scale[base_pitch]
+        for scale in scales:
+            pitch_scale += scale
+            pitch_list.append(self.scale_pitch[pitch_scale % 12])
+        return pitch_list
