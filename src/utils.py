@@ -1,7 +1,4 @@
 import numpy as np
-np.random.seed(42)
-
-
 def gen_square_wave(frequency, amplitude, duration, sample_rate):
     """
     amplitude: 0-255

@@ -206,6 +206,28 @@ class Melody8bit:
             raise ValueError(f"Unknown pitch: {in_pitch}, should be one of "
                              f"{self.pitch_dict.keys()} or {self.pitch_scale.keys()}")
 
+    def get_chord_pitch(self, pitch, chord_type):
+        if chord_type == 'maj':
+            # 大三和弦，根音、三音（大三度）、五音（小三度）
+            third_pitch = self.cal_pitch(pitch, '+maj3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+min3')
+            return pitch, third_pitch, fifth_pitch
+        elif chord_type == 'min':
+            # 小三和弦，根音、三音（小三度）、五音（大三度）
+            third_pitch = self.cal_pitch(pitch, '+min3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+maj3')
+            return pitch, third_pitch, fifth_pitch
+        elif chord_type == 'dim':
+            # 减三和弦，根音、三音（小三度）、五音（小三度）
+            third_pitch = self.cal_pitch(pitch, '+min3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+min3')
+            return pitch, third_pitch, fifth_pitch
+        elif chord_type == 'aug':
+            # 增三和弦，根音、三音（大三度）、五音（大三度）
+            third_pitch = self.cal_pitch(pitch, '+maj3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+maj3')
+            return pitch, third_pitch, fifth_pitch
+
 
 # 吉他
 class Guitar8bit(Rhythm8bit):
@@ -253,28 +275,6 @@ class Guitar8bit(Rhythm8bit):
         one_score_duration = one_score_sample_count / self.sample_rate
         return self.gen_timbre_wave(pitch, one_score_duration)
 
-    def get_chord_pitch(self, pitch, chord_type):
-        if chord_type == 'maj':
-            # 根音、三音（大三度）、五音（小三度）
-            third_pitch = self.melody.cal_pitch(pitch, '+maj3')
-            fifth_pitch = self.melody.cal_pitch(third_pitch, '+min3')
-            return pitch, third_pitch, fifth_pitch
-        elif chord_type == 'min':
-            # 根音、三音（小三度）、五音（大三度）
-            third_pitch = self.melody.cal_pitch(pitch, '+min3')
-            fifth_pitch = self.melody.cal_pitch(third_pitch, '+maj3')
-            return pitch, third_pitch, fifth_pitch
-        elif chord_type == 'dim':
-            # 根音、三音（小三度）、五音（小三度）
-            third_pitch = self.melody.cal_pitch(pitch, '+min3')
-            fifth_pitch = self.melody.cal_pitch(third_pitch, '+min3')
-            return pitch, third_pitch, fifth_pitch
-        elif chord_type == 'aug':
-            # 根音、三音（大三度）、五音（大三度）
-            third_pitch = self.melody.cal_pitch(pitch, '+maj3')
-            fifth_pitch = self.melody.cal_pitch(third_pitch, '+maj3')
-            return pitch, third_pitch, fifth_pitch
-
     def gen_chord_wave(self, root_pitch, third_pitch, fifth_pitch, one_score_sample_count):
         wav1 = self.gen_prolong_wave(root_pitch, one_score_sample_count)
         wav2 = self.gen_prolong_wave(third_pitch, one_score_sample_count)
@@ -308,7 +308,7 @@ class Guitar8bit(Rhythm8bit):
             techniques = technique.split('-')
             chord_type = techniques[0]
             perform_type = techniques[1]
-            root_pitch, third_pitch, fifth_pitch = self.get_chord_pitch(pitch, chord_type)
+            root_pitch, third_pitch, fifth_pitch = self.melody.get_chord_pitch(pitch, chord_type)
             if perform_type == 'chord':
                 return self.gen_chord_wave(root_pitch, third_pitch, fifth_pitch, one_score_sample_count)
             elif perform_type == 'arpeggio':
@@ -376,9 +376,10 @@ class Band8bit:
 class MelodyAssist8bit(Melody8bit):
     def __init__(self):
         super().__init__()
-        self.tonic_chords = ['1-maj', '6-min']
-        self.dominant_chords = ['5-maj', '3-min', '7-dim']
-        self.subdominant_chords = ['2-min', '4-maj']
+        self.chord_seq = {'I': 0, 'II': 1, 'III': 2, 'IV': 3, 'V': 4, 'VI': 5, 'VII': 6}
+        self.tonic_chords = ['I', 'VI']
+        self.dominant_chords = ['V', 'III', 'VII']
+        self.subdominant_chords = ['II', 'IV']
         self.chord_func_dict = {'T': self.tonic_chords, 'D': self.dominant_chords, 'S': self.subdominant_chords}
 
         self.popular_chord_progression_types = ['T-S-D-T', 'S-D-D-T-S-D-T-T', 'T-D-T-D-S-T-S-T']
@@ -405,10 +406,10 @@ class MelodyAssist8bit(Melody8bit):
         scales = []
         if mode == 'maj':
             # 大调 全全半全全全半
-            scales = [0, 2, 2, 1, 2, 2, 2, 1]
+            scales = [0, 2, 2, 1, 2, 2, 2]
         elif mode == 'min':
             # 小调 全半全全半全全
-            scales = [0, 2, 1, 2, 2, 1, 2, 2]
+            scales = [0, 2, 1, 2, 2, 1, 2]
         pitch_scale = self.pitch_scale[base_pitch]
         for scale in scales:
             pitch_scale += scale
@@ -416,7 +417,34 @@ class MelodyAssist8bit(Melody8bit):
         return pitch_list
 
     # 根据给定调性和和弦类型生成和弦进行
-    def gen_chord_progression(self, tonality, chord_progression_type):
-        chords = chord_progression_type.split('-')
-        for chord in chords:
-            pass
+    def gen_random_chord_progression(self, tonality, chord_progression_type):
+        """
+        tonality example:
+         'C-maj': C major C大调
+         'A-min': a minor a小调
+         '#F-maj': #F major #F大调
+        chord_progression_type example:
+         'T-S-D-T': 第一和弦为T，第二和弦为S，第三和弦为D，第四和弦为T
+        """
+        ret_dict = {}
+        chord_progressions = []
+        chord_progression_pitches = []
+        natural_pitches = self.get_natural_pitches(tonality)
+        chord_types = chord_progression_type.split('-')
+        for chord_type in chord_types:
+            chord_func = self.chord_func_dict[chord_type]
+            i = np.random.randint(0, len(chord_func))
+            chord_type = chord_func[i]
+            root_pitch_i = self.chord_seq[chord_type]
+            root_pitch = natural_pitches[root_pitch_i]
+            chord_progressions.append(chord_type)
+            third_pitch_i = (root_pitch_i + 2) % 7
+            third_pitch = natural_pitches[third_pitch_i]
+            fifth_pitch_i = (root_pitch_i + 4) % 7
+            fifth_pitch = natural_pitches[fifth_pitch_i]
+            chord_progression_pitches.append([root_pitch, third_pitch, fifth_pitch])
+
+        ret_dict['natural_pitches'] = natural_pitches
+        ret_dict['chord_progressions'] = chord_progressions
+        ret_dict['chord_progression_pitches'] = chord_progression_pitches
+        return ret_dict
