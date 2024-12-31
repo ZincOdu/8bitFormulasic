@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 from src.melody import Guitar8bit, Bass8bit, Drum8bit, MelodyAssist8bit
+import numpy as np
+import wave
 
 guitar = Guitar8bit(72)
 bass = Bass8bit(72)
@@ -25,6 +27,22 @@ drum = Drum8bit(72)
 
 melody_assist = MelodyAssist8bit()
 
-res = melody_assist.gen_random_chord_progression('C-min', 'T-S-D-T')
+pitches = melody_assist.get_chord_pitches('C4','maj7')
 
-print(res)
+wavs = []
+
+for pitch in pitches:
+    wav = guitar.gen_wave([('O', '1/4', ''),
+                           (pitch, '1/2', 'pr'),
+                           ('O', '1/4', '')])
+    wavs.append(wav)
+
+wav = np.zeros(len(wavs[0]), dtype=np.uint8)
+for i in range(len(wavs)):
+    wav += wavs[i]
+
+with wave.open('chord.wav', 'wb') as f:
+    f.setnchannels(1)
+    f.setsampwidth(1)
+    f.setframerate(11025)
+    f.writeframes(wav.tobytes())

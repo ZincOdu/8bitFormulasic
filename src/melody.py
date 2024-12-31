@@ -10,6 +10,7 @@ class Rhythm8bit(ABC):
         self.bpm = bpm  # beats per minute 60-240 节拍数
         self.one_beat_note = one_beat_note  # 'half', 'quarter', 'eighth' 以几分音符为一拍
         self.sample_rate = 11025  # 采样率  # Hz 采样率
+        self.wav = np.array([], dtype=np.uint8)  # 音频数据
 
         # child class set
         self.amplitude = 0  # 0-255 音量
@@ -128,15 +129,15 @@ class Rhythm8bit(ABC):
                 raise ValueError(f"score_list: [(pitch, note, technique),...]")
             wave_list.append(self.gen_one_score_wave(score))
         wav = np.concatenate(wave_list)
-        return np.tile(wav, repeat_times)
+        self.wav = np.tile(wav, repeat_times)
+        return self.wav
 
-    def write_wave(self, wav, file_path):
+    def write_wave(self, file_path):
         with wave.open(file_path, 'wb') as f:
             f.setnchannels(1)
             f.setsampwidth(1)
             f.setframerate(self.sample_rate)
-            f.writeframes(wav.tobytes())
-
+            f.writeframes(self.wav.tobytes())
 
 # 旋律类
 class Melody8bit:
@@ -164,6 +165,9 @@ class Melody8bit:
                             '#F': 6, 'G': 7, '#G': 8, 'A': 9, '#A': 10, 'B': 11}
         self.scale_pitch = {0: 'C', 1: '#C', 2: 'D', 3: '#D', 4: 'E', 5: 'F',
                             6: '#F', 7: 'G', 8: '#G', 9: 'A', 10: '#A', 11: 'B'}
+
+        # 常用和弦类型
+        self.chord_types = ['maj','min', 'dim', 'aug','maj7', '7','min7','m7-5', 'dim7']
 
     # 音名计算
     def cal_pitch(self, in_pitch, method):
@@ -206,27 +210,59 @@ class Melody8bit:
             raise ValueError(f"Unknown pitch: {in_pitch}, should be one of "
                              f"{self.pitch_dict.keys()} or {self.pitch_scale.keys()}")
 
-    def get_chord_pitch(self, pitch, chord_type):
+    def get_chord_pitches(self, pitch, chord_type):
+        if chord_type not in self.chord_types:
+            raise ValueError(f"Unknown chord type: {chord_type}, should be one of {self.chord_types}")
         if chord_type == 'maj':
             # 大三和弦，根音、三音（大三度）、五音（小三度）
             third_pitch = self.cal_pitch(pitch, '+maj3')
             fifth_pitch = self.cal_pitch(third_pitch, '+min3')
-            return pitch, third_pitch, fifth_pitch
+            return [pitch, third_pitch, fifth_pitch]
         elif chord_type == 'min':
             # 小三和弦，根音、三音（小三度）、五音（大三度）
             third_pitch = self.cal_pitch(pitch, '+min3')
             fifth_pitch = self.cal_pitch(third_pitch, '+maj3')
-            return pitch, third_pitch, fifth_pitch
+            return [pitch, third_pitch, fifth_pitch]
         elif chord_type == 'dim':
             # 减三和弦，根音、三音（小三度）、五音（小三度）
             third_pitch = self.cal_pitch(pitch, '+min3')
             fifth_pitch = self.cal_pitch(third_pitch, '+min3')
-            return pitch, third_pitch, fifth_pitch
+            return [pitch, third_pitch, fifth_pitch]
         elif chord_type == 'aug':
             # 增三和弦，根音、三音（大三度）、五音（大三度）
             third_pitch = self.cal_pitch(pitch, '+maj3')
             fifth_pitch = self.cal_pitch(third_pitch, '+maj3')
-            return pitch, third_pitch, fifth_pitch
+            return [pitch, third_pitch, fifth_pitch]
+        elif chord_type == 'maj7':
+            # 大七和弦：大三和弦+七音（五音大三度）
+            third_pitch = self.cal_pitch(pitch, '+maj3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+min3')
+            seventh_pitch = self.cal_pitch(fifth_pitch, '+maj3')
+            return [pitch, third_pitch, fifth_pitch, seventh_pitch]
+        elif chord_type == '7':
+            # 属七和弦：大三和弦+降七音（五音小三度）
+            third_pitch = self.cal_pitch(pitch, '+maj3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+min3')
+            seventh_pitch = self.cal_pitch(fifth_pitch, '+min3')
+            return [pitch, third_pitch, fifth_pitch, seventh_pitch]
+        elif chord_type == 'min7':
+            # 小七和弦：小三和弦+降七音（五音小三度）
+            third_pitch = self.cal_pitch(pitch, '+min3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+maj3')
+            seventh_pitch = self.cal_pitch(fifth_pitch, '+min3')
+            return [pitch, third_pitch, fifth_pitch, seventh_pitch]
+        elif chord_type == 'm7-5':
+            # 半减七和弦：减三和弦+小七度
+            third_pitch = self.cal_pitch(pitch, '+min3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+min3')
+            seventh_pitch = self.cal_pitch(fifth_pitch, '+maj3')
+            return [pitch, third_pitch, fifth_pitch, seventh_pitch]
+        elif chord_type == 'dim7':
+            # 减七和弦：减三和弦+七音（五音小三度）
+            third_pitch = self.cal_pitch(pitch, '+min3')
+            fifth_pitch = self.cal_pitch(third_pitch, '+min3')
+            seventh_pitch = self.cal_pitch(fifth_pitch, '+min3')
+            return [pitch, third_pitch, fifth_pitch, seventh_pitch]
 
 
 # 吉他
@@ -308,7 +344,10 @@ class Guitar8bit(Rhythm8bit):
             techniques = technique.split('-')
             chord_type = techniques[0]
             perform_type = techniques[1]
-            root_pitch, third_pitch, fifth_pitch = self.melody.get_chord_pitch(pitch, chord_type)
+            chord_pitches = self.melody.get_chord_pitches(pitch, chord_type)
+            root_pitch = chord_pitches[0]
+            third_pitch = chord_pitches[1]
+            fifth_pitch = chord_pitches[2]
             if perform_type == 'chord':
                 return self.gen_chord_wave(root_pitch, third_pitch, fifth_pitch, one_score_sample_count)
             elif perform_type == 'arpeggio':
@@ -367,10 +406,60 @@ class Band8bit:
         self.bpm = bpm
         self.one_beat_note = one_beat_note
 
-        self.guitar1 = Guitar8bit(bpm)
-        self.guitar2 = Guitar8bit(bpm)
+        self.guitar_theme = Guitar8bit(bpm)
+        self.guitar_accompaniment = Guitar8bit(bpm)
         self.bass = Bass8bit(bpm)
         self.drum = Drum8bit(bpm)
+
+        self.guitar_theme_wav = np.array([], dtype=np.uint8)
+        self.guitar_accompaniment_wav = np.array([], dtype=np.uint8)
+        self.bass_wav = np.array([], dtype=np.uint8)
+        self.drum_wav = np.array([], dtype=np.uint8)
+
+        self.music_wav = np.array([], dtype=np.uint8)
+
+    def gen_one_instrument_wave(self, instrument, score_list, repeat_times):
+        if instrument == 'guitar_theme':
+            return self.guitar_theme.gen_wave(score_list, repeat_times)
+        elif instrument == 'guitar_accompaniment':
+            return self.guitar_accompaniment.gen_wave(score_list, repeat_times)
+        elif instrument == 'bass':
+            return self.bass.gen_wave(score_list, repeat_times)
+        elif instrument == 'drum':
+            return self.drum.gen_wave(score_list, repeat_times)
+        else:
+            raise ValueError(f"Unknown instrument: {instrument}, should be one of "
+                             f"'guitar_theme', 'guitar_accompaniment', 'bass', 'drum'")
+
+    def gen_music(self, score_dict):
+        """
+        score_dict example:
+        {
+            'guitar_theme': [(score_list, repeat_times),...],
+            'guitar_accompaniment': [(score_list, repeat_times),...],
+            'bass': [(score_list, repeat_times),...],
+            'drum': [(score_list, repeat_times),...],
+        }
+        score_list example:
+        [('C4', '1/4','pr'),...]
+        """
+
+        # sum all waves
+        max_len = max(len(self.guitar_theme_wav), len(self.guitar_accompaniment_wav),
+                      len(self.bass_wav), len(self.drum_wav))
+        self.music_wav = np.zeros(max_len, dtype=np.uint8)
+        self.music_wav[:len(self.guitar_theme_wav)] += self.guitar_theme_wav
+        self.music_wav[:len(self.guitar_accompaniment_wav)] += self.guitar_accompaniment_wav
+        self.music_wav[:len(self.bass_wav)] += self.bass_wav
+        self.music_wav[:len(self.drum_wav)] += self.drum_wav
+        return self.music_wav
+
+    def write_music(self, file_path):
+        with wave.open(file_path, 'wb') as f:
+            f.setnchannels(1)
+            f.setsampwidth(1)
+            f.setframerate(self.guitar_theme.sample_rate)
+            f.writeframes(self.music_wav.tobytes())
 
 
 class MelodyAssist8bit(Melody8bit):
