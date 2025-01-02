@@ -267,8 +267,8 @@ class Melody8bit:
 
 # 吉他
 class Guitar8bit(Rhythm8bit):
-    def __init__(self, bpm):
-        super().__init__(bpm)
+    def __init__(self, bpm, one_beat_note='quarter'):
+        super().__init__(bpm, one_beat_note)
         self.instrument_duration = 0.1  # seconds
         self.amplitude = 16
         # 特殊技法：延音、颤音、滑音、三和弦、三和弦琶音
@@ -356,8 +356,8 @@ class Guitar8bit(Rhythm8bit):
 
 # 贝司音色波形
 class Bass8bit(Guitar8bit):
-    def __init__(self, bpm):
-        super().__init__(bpm)
+    def __init__(self, bpm, one_beat_note='quarter'):
+        super().__init__(bpm, one_beat_note)
         self.amplitude = 32
 
     def gen_timbre_wave(self, pitch, duration):
@@ -367,8 +367,8 @@ class Bass8bit(Guitar8bit):
 
 # 架子鼓音色波形
 class Drum8bit(Rhythm8bit):
-    def __init__(self, bpm):
-        super().__init__(bpm)
+    def __init__(self, bpm, one_beat_note='quarter'):
+        super().__init__(bpm, one_beat_note)
         self.amplitude = 16
         self.instrument_duration = 0.1  # seconds
         self.pitch_dict = {'X': 0.0, 'O': 0.0}
@@ -402,34 +402,44 @@ class Drum8bit(Rhythm8bit):
 
 
 class Band8bit:
-    def __init__(self, bpm, one_beat_note='quarter'):
+    def __init__(self, bpm,  instrument_dict, one_beat_note='quarter'):
+        """
+        instrument_dict example:
+        {
+            'guitar_theme': 'guitar',
+            'guitar_accompaniment': 'guitar',
+            'bass': 'bass',
+            'drum': 'drum',
+        }
+        """
+
         self.bpm = bpm
         self.one_beat_note = one_beat_note
-
-        self.guitar_theme = Guitar8bit(bpm)
-        self.guitar_accompaniment = Guitar8bit(bpm)
-        self.bass = Bass8bit(bpm)
-        self.drum = Drum8bit(bpm)
-
-        self.guitar_theme_wav = np.array([], dtype=np.uint8)
-        self.guitar_accompaniment_wav = np.array([], dtype=np.uint8)
-        self.bass_wav = np.array([], dtype=np.uint8)
-        self.drum_wav = np.array([], dtype=np.uint8)
-
+        self.instrument_types = ['guitar', 'bass', 'drum']
+        self.instrument_obj_dict = {}
+        self.instrument_wav_dict = {}
         self.music_wav = np.array([], dtype=np.uint8)
 
-    def gen_one_instrument_wave(self, instrument, score_list, repeat_times):
-        if instrument == 'guitar_theme':
-            return self.guitar_theme.gen_wave(score_list, repeat_times)
-        elif instrument == 'guitar_accompaniment':
-            return self.guitar_accompaniment.gen_wave(score_list, repeat_times)
-        elif instrument == 'bass':
-            return self.bass.gen_wave(score_list, repeat_times)
-        elif instrument == 'drum':
-            return self.drum.gen_wave(score_list, repeat_times)
-        else:
+        for instrument_name, instrument_type in instrument_dict.items():
+            if instrument_type == 'guitar':
+                self.instrument_obj_dict[instrument_name] = Guitar8bit(bpm, one_beat_note)
+            elif instrument_type == 'bass':
+                self.instrument_obj_dict[instrument_name] = Bass8bit(bpm, one_beat_note)
+            elif instrument_type == 'drum':
+                self.instrument_obj_dict[instrument_name] = Drum8bit(bpm, one_beat_note)
+            else:
+                raise ValueError(f"Unknown instrument type: {instrument_type}, should be one of {self.instrument_types}")
+
+    def gen_one_instrument_wave(self, instrument, score_list_list):
+        if instrument not in self.instrument_obj_dict.keys():
             raise ValueError(f"Unknown instrument: {instrument}, should be one of "
-                             f"'guitar_theme', 'guitar_accompaniment', 'bass', 'drum'")
+                             f"{self.instrument_obj_dict.keys()}")
+        wav = np.array([], dtype=np.uint8)
+        for score_list, repeat_times in score_list_list:
+            one_wav = self.instrument_obj_dict[instrument].gen_wave(score_list, repeat_times)
+            wav = np.concatenate([wav, one_wav])
+        self.instrument_wav_dict[instrument] = wav
+        return wav
 
     def gen_music(self, score_dict):
         """
@@ -443,22 +453,22 @@ class Band8bit:
         score_list example:
         [('C4', '1/4','pr'),...]
         """
-
+        max_len = 0
+        for instrument, score_list_list in score_dict.items():
+            self.gen_one_instrument_wave(instrument, score_list_list)
+            max_len = max(max_len, len(self.instrument_wav_dict[instrument]))
         # sum all waves
-        max_len = max(len(self.guitar_theme_wav), len(self.guitar_accompaniment_wav),
-                      len(self.bass_wav), len(self.drum_wav))
-        self.music_wav = np.zeros(max_len, dtype=np.uint8)
-        self.music_wav[:len(self.guitar_theme_wav)] += self.guitar_theme_wav
-        self.music_wav[:len(self.guitar_accompaniment_wav)] += self.guitar_accompaniment_wav
-        self.music_wav[:len(self.bass_wav)] += self.bass_wav
-        self.music_wav[:len(self.drum_wav)] += self.drum_wav
-        return self.music_wav
+        music_wav = np.zeros(max_len, dtype=np.uint8)
+        for instrument, wav in self.instrument_wav_dict.items():
+            music_wav[:len(wav)] += wav
+        self.music_wav = music_wav
+        return music_wav
 
     def write_music(self, file_path):
         with wave.open(file_path, 'wb') as f:
             f.setnchannels(1)
             f.setsampwidth(1)
-            f.setframerate(self.guitar_theme.sample_rate)
+            f.setframerate(list(self.instrument_obj_dict.values())[0].sample_rate)
             f.writeframes(self.music_wav.tobytes())
 
 
