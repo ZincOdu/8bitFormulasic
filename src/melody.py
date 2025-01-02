@@ -139,6 +139,7 @@ class Rhythm8bit(ABC):
             f.setframerate(self.sample_rate)
             f.writeframes(self.wav.tobytes())
 
+
 # 旋律类
 class Melody8bit:
     def __init__(self):
