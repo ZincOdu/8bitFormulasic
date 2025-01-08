@@ -371,10 +371,11 @@ class Drum8bit(Rhythm8bit):
     def __init__(self, bpm, one_beat_note='quarter'):
         super().__init__(bpm, one_beat_note)
         self.amplitude = 16
-        self.instrument_duration = 0.1  # seconds
+        self.instrument_duration = 0.1  # seconds 底鼓
         self.pitch_dict = {'X': 0.0, 'O': 0.0}
         self.performances = {'triple': 'triple beat 三连音',
-                             'hi-hat': 'hi-hat 镲音'}
+                             'hi-hat': 'hi-hat 镲音',
+                             'tom': 'tom 嗵嗵鼓'}
 
     def gen_timbre_wave(self, pitch, duration):
         if pitch == 'X':
@@ -392,6 +393,10 @@ class Drum8bit(Rhythm8bit):
         instrument_duration = 0.02
         return self.gen_timbre_wave(pitch, instrument_duration)
 
+    def gen_tom_wave(self, pitch, one_score_sample_count):
+        instrument_duration = 0.05
+        return self.gen_timbre_wave(pitch, instrument_duration)
+
     def gen_instrument_technique_wave(self, pitch, one_score_sample_count, technique):
         if technique not in self.performances.keys():
             raise ValueError(f'Unknown technique: {technique}, should be one of {self.performances.keys()}')
@@ -400,7 +405,31 @@ class Drum8bit(Rhythm8bit):
             return self.gen_triple_wave(pitch, one_score_sample_count)
         elif technique == 'hi-hat':
             return self.gen_hi_hat_wave(pitch, one_score_sample_count)
+        elif technique == 'tom':
+            return self.gen_tom_wave(pitch, one_score_sample_count)
 
+    def gen_general_beat(self, beat_name, repeat_times):
+        beat_names = ['4/4-rock-roll', '4/4-disco', '4/4-funk', '4/4-pop',
+                      '3/4-ball',
+                      '6/8-folk']
+        if beat_name not in beat_names:
+            raise ValueError(f"Unknown beat name: {beat_name}, should be one of {beat_names}")
+
+        score_list = []
+        if beat_name == '4/4-rock-roll':
+            score_list = [('X', '1/4', ''), ('X', '1/4', 'hi-hat'), ('X', '1/4', 'tom'), ('X', '1/4', 'hi-hat')]
+        elif beat_name == '4/4-disco':
+            pass
+        elif beat_name == '4/4-funk':
+            pass
+        elif beat_name == '4/4-pop':
+            pass
+        elif beat_name == '3/4-ball':
+            pass
+        elif beat_name == '6/8-folk':
+            pass
+        self.wav = self.gen_wave(score_list, repeat_times)
+        return self.wav
 
 class Band8bit:
     def __init__(self, bpm,  instrument_dict, one_beat_note='quarter'):
