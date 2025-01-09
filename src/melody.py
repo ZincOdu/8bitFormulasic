@@ -70,11 +70,10 @@ class Rhythm8bit(ABC):
                                       '1': self.eight_beat_sample_count}
 
     @abstractmethod
-    def gen_timbre_wave(self, pitch: str, duration: float) -> np.array:
+    def gen_timbre_wave(self, pitch: str, *args) -> np.array:
         """
         生成一个音符的基音波形
         pitch字串是self.pitch_dict中的键值
-        duration是音符的时长，单位为秒
         """
         pass
 
@@ -112,7 +111,7 @@ class Rhythm8bit(ABC):
 
         # 普通单音
         if len(technique) == 0:
-            wav = self.gen_timbre_wave(pitch, self.instrument_duration)
+            wav = self.gen_timbre_wave(pitch)
         # 特殊技法
         else:
             wav = self.gen_instrument_technique_wave(pitch, score_sample_count, technique)
@@ -168,7 +167,7 @@ class Melody8bit:
                             6: '#F', 7: 'G', 8: '#G', 9: 'A', 10: '#A', 11: 'B'}
 
         # 常用和弦类型
-        self.chord_types = ['maj','min', 'dim', 'aug','maj7', '7','min7','m7-5', 'dim7']
+        self.chord_types = ['maj', 'min', 'dim', 'aug', 'maj7', '7', 'min7', 'm7-5', 'dim7']
 
     # 音名计算
     def cal_pitch(self, in_pitch, method):
@@ -288,8 +287,9 @@ class Guitar8bit(Rhythm8bit):
         self.melody = Melody8bit()
         self.pitch_dict = self.melody.pitch_dict
 
-    def gen_timbre_wave(self, pitch, duration):
+    def gen_timbre_wave(self, pitch, *args):
         frequency = self.pitch_dict[pitch]
+        duration = args[0]
         return gen_square_wave(frequency, self.amplitude, duration, self.sample_rate)
 
     def gen_prolong_wave(self, pitch, one_score_sample_count):
@@ -361,8 +361,9 @@ class Bass8bit(Guitar8bit):
         super().__init__(bpm, one_beat_note)
         self.amplitude = 32
 
-    def gen_timbre_wave(self, pitch, duration):
+    def gen_timbre_wave(self, pitch, *args):
         frequency = self.pitch_dict[pitch]
+        duration = args[0]
         return gen_triangle_wave(frequency, self.amplitude, duration, self.sample_rate)
 
 
@@ -371,53 +372,31 @@ class Drum8bit(Rhythm8bit):
     def __init__(self, bpm, one_beat_note='quarter'):
         super().__init__(bpm, one_beat_note)
         self.amplitude = 16
-        self.instrument_duration = 0.1  # seconds 底鼓
-        self.pitch_dict = {'X': 0.0, 'O': 0.0}
-        self.performances = {'triple': 'triple beat 三连音',
-                             'hi-hat': 'hi-hat 镲音',
-                             'tom': 'tom 嗵嗵鼓'}
+        self.pitch_dict = {'K': 0.08,  # second of kick 底鼓
+                           'S': 0.05,  # second of snare 军鼓
+                           'H': 0.02,  # second of hi-hat 镲音
+                           'O': 0.0}
 
-    def gen_timbre_wave(self, pitch, duration):
-        if pitch == 'X':
-            return gen_noise_wave(self.amplitude, duration, self.sample_rate)
+    def gen_timbre_wave(self, pitch, *args):
+        duration = self.pitch_dict[pitch]
+        return gen_noise_wave(self.amplitude, duration, self.sample_rate)
 
-    def gen_triple_wave(self, pitch, one_score_sample_count):
-        zero_duration = 0.01
-        zero_sample_count = int(round(zero_duration * self.sample_rate))
-        wav1 = self.gen_timbre_wave(pitch, self.instrument_duration)
-        wav2 = gen_zero_wave(zero_sample_count)
-        wav = np.concatenate([wav1, wav2])
-        return np.tile(wav, 3)
-
-    def gen_hi_hat_wave(self, pitch, one_score_sample_count):
-        instrument_duration = 0.02
-        return self.gen_timbre_wave(pitch, instrument_duration)
-
-    def gen_tom_wave(self, pitch, one_score_sample_count):
-        instrument_duration = 0.05
-        return self.gen_timbre_wave(pitch, instrument_duration)
-
-    def gen_instrument_technique_wave(self, pitch, one_score_sample_count, technique):
+    def gen_instrument_technique_wave(self, pitch: str, one_score_sample_count: int, technique: str):
         if technique not in self.performances.keys():
             raise ValueError(f'Unknown technique: {technique}, should be one of {self.performances.keys()}')
+        return np.array([], dtype=np.uint8)
 
-        if technique == 'triple':
-            return self.gen_triple_wave(pitch, one_score_sample_count)
-        elif technique == 'hi-hat':
-            return self.gen_hi_hat_wave(pitch, one_score_sample_count)
-        elif technique == 'tom':
-            return self.gen_tom_wave(pitch, one_score_sample_count)
-
-    def gen_general_beat(self, beat_name, repeat_times):
-        beat_names = ['4/4-rock-roll', '4/4-disco', '4/4-funk', '4/4-pop',
+    def common_beat_score_list(self, beat_name):
+        beat_names = ['4/4-money', '4/4-disco', '4/4-funk', '4/4-pop',
                       '3/4-ball',
                       '6/8-folk']
         if beat_name not in beat_names:
             raise ValueError(f"Unknown beat name: {beat_name}, should be one of {beat_names}")
 
         score_list = []
-        if beat_name == '4/4-rock-roll':
-            score_list = [('X', '1/4', ''), ('X', '1/4', 'hi-hat'), ('X', '1/4', 'tom'), ('X', '1/4', 'hi-hat')]
+        if beat_name == '4/4-money':
+            score_list = [('K', '1/8', ''), ('H', '1/8', ''), ('S', '1/8', ''), ('H', '1/8', ''),
+                          ('K', '1/8', ''), ('H', '1/8', ''), ('S', '1/8', ''), ('H', '1/8', '')]
         elif beat_name == '4/4-disco':
             pass
         elif beat_name == '4/4-funk':
@@ -428,11 +407,11 @@ class Drum8bit(Rhythm8bit):
             pass
         elif beat_name == '6/8-folk':
             pass
-        self.wav = self.gen_wave(score_list, repeat_times)
-        return self.wav
+        return score_list
+
 
 class Band8bit:
-    def __init__(self, bpm,  instrument_dict, one_beat_note='quarter'):
+    def __init__(self, bpm, instrument_dict, one_beat_note='quarter'):
         """
         instrument_dict example:
         {
@@ -458,7 +437,8 @@ class Band8bit:
             elif instrument_type == 'drum':
                 self.instrument_obj_dict[instrument_name] = Drum8bit(bpm, one_beat_note)
             else:
-                raise ValueError(f"Unknown instrument type: {instrument_type}, should be one of {self.instrument_types}")
+                raise ValueError(
+                    f"Unknown instrument type: {instrument_type}, should be one of {self.instrument_types}")
 
     def gen_one_instrument_wave(self, instrument, score_list_list):
         if instrument not in self.instrument_obj_dict.keys():
