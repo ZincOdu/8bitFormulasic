@@ -387,7 +387,7 @@ class Drum8bit(Rhythm8bit):
         return np.array([], dtype=np.uint8)
 
     def common_beat_score_list(self, beat_name):
-        beat_names = ['4/4-money', '4/4-disco', '4/4-funk', '4/4-pop',
+        beat_names = ['4/4-money', '4/4-disco1', '4/4-disco2', '4/4-funk',
                       '3/4-ball',
                       '6/8-folk']
         if beat_name not in beat_names:
@@ -397,16 +397,24 @@ class Drum8bit(Rhythm8bit):
         if beat_name == '4/4-money':
             score_list = [('K', '1/8', ''), ('H', '1/8', ''), ('S', '1/8', ''), ('H', '1/8', ''),
                           ('K', '1/8', ''), ('H', '1/8', ''), ('S', '1/8', ''), ('H', '1/8', '')]
-        elif beat_name == '4/4-disco':
-            pass
+        elif beat_name == '4/4-disco1':
+            score_list = [('K', '1/16', ''), ('H', '1/16', ''), ('H', '1/16', ''), ('H', '1/16', ''),
+                          ('S', '1/16', ''), ('H', '1/16', ''), ('H', '1/16', ''), ('H', '1/16', ''),
+                          ('K', '1/16', ''), ('H', '1/16', ''), ('H', '1/16', ''), ('H', '1/16', ''),
+                          ('S', '1/16', ''), ('H', '1/16', ''), ('H', '1/16', ''), ('H', '1/16', '')]
+        elif beat_name == '4/4-disco2':
+            score_list = [('K', '1/8', ''), ('H', '1/8', ''), ('S', '1/8', ''), ('H', '1/16', ''), ('H', '1/16', ''),
+                          ('K', '1/8', ''), ('H', '1/8', ''), ('S', '1/8', ''), ('H', '1/16', ''), ('H', '1/16', '')]
         elif beat_name == '4/4-funk':
-            pass
-        elif beat_name == '4/4-pop':
-            pass
+            score_list = [('S', '1/16', ''), ('H', '1/16', ''), ('S', '1/16', ''),('H', '1/16', ''),
+                          ('K', '1/8', ''), ('H', '1/8', ''),
+                          ('S', '1/16', ''), ('H', '1/16', ''), ('S', '1/16', ''), ('H', '1/16', ''),
+                          ('K', '1/8', ''), ('H', '1/8', '')]
         elif beat_name == '3/4-ball':
-            pass
+            score_list = [('K', '1/4', ''), ('H', '1/4', ''), ('H', '1/4', '')]
         elif beat_name == '6/8-folk':
-            pass
+            score_list = [('K', '1/8', ''), ('H', '1/8', ''), ('H', '1/8', ''),
+                          ('S', '1/8', ''), ('H', '1/8', ''), ('H', '1/8', '')]
         return score_list
 
 
